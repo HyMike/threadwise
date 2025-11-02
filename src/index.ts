@@ -1,4 +1,4 @@
-import { ThreadAnalyzerJob } from './jobs/analyzer';
+import { ThreadAnalyzerJob } from "./jobs/analyzer";
 
 async function runThreadAnalysis() {
   const job = new ThreadAnalyzerJob();
