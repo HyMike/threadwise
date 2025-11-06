@@ -7,7 +7,7 @@ import { config as dotenvConfig } from "dotenv";
 import { questionAnswerPrompt } from "../prompts/categoriesPrompts";
 dotenvConfig();
 
-// These unit tests make actually API Calls to an LLM. They're not mocked. You'll need a LLM API Key in order to run.  
+// These unit tests make actually API Calls to an LLM. They're not mocked. You'll need a LLM API Key in order to run.
 describe("ThreadAnalyzerJob", () => {
   let LLMClient: LLMClient;
   let threadAnalyzer: ThreadAnalyzerJob;

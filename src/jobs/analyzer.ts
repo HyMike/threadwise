@@ -18,6 +18,9 @@ import {
   decisionDiscussionPrompt,
   statusUpdatePrompt,
 } from "../prompts/categoriesPrompts";
+import { FallbackEncoder } from "openai/internal/request-options";
+import { MESSAGE_STATUSES } from "../constants/statuses";
+import { buildResolvedSummary } from "../helpers/buildResolvedSummary";
 
 // src/jobs/threadAnalyzer.ts
 interface Workspace {
@@ -109,6 +112,8 @@ export class ThreadAnalyzerJob {
     channelId: string,
     workspace: Workspace
   ) {
+    // this.slackClient.removeMessage(channelId, workspace.id,'p1762133256169839');
+
     try {
       const messages = await this.slackClient.getThreadMessages(
         channelId,
@@ -162,17 +167,45 @@ export class ThreadAnalyzerJob {
       console.log(`filteredThread category: ${category}`);
 
       if (!!category && category !== "casual_chat") {
-        return this.summarizeResponse(
+        const summarizedResponse = await this.summarizeResponse(
           llmClient,
           promptMap[category],
           threadCategorized,
           enhancedContext
         );
+
+        const { summary, status } = summarizedResponse;
+        // Return formatted resolved, unresolved or in progress summary for slack base on the status.
+        const resolvedSummary = buildResolvedSummary(summarizedResponse);
+        if (status === MESSAGE_STATUSES.RESOLVED) {
+          await this.slackClient.postStatusUpdate({
+            channelId,
+            resolvedSummary,
+            threadTs: thread.ts,
+            workspaceId: workspace.id,
+            fallBackSummary: summary,
+          });
+          await this.slackClient.addCheckmark(
+            channelId,
+            thread.ts,
+            workspace.id
+          );
+        } else if (status === MESSAGE_STATUSES.UNRESOLVED || status === MESSAGE_STATUSES.IN_PROGRESS) {
+          
+          await this.slackClient.postStatusUpdate({
+            channelId,
+            resolvedSummary,
+            threadTs: thread.ts,
+            workspaceId: workspace.id,
+            fallBackSummary: summary,
+          });
+        }
       }
     } catch (error) {
       console.error(`Error processing thread ${thread.ts}:`, error);
     }
   }
+
   /**
    * Takes thread message to process by a llm and return the category,
    * @param llmClient
@@ -224,27 +257,3 @@ export class ThreadAnalyzerJob {
     }
   }
 }
-
-// if (resolution) {
-//   summary = `Thread is resolved: ${summary}`
-//   await this.slackClient.postStatusUpdate({
-//     channelId,
-//     summary,
-//     threadTs: thread.ts,
-//     workspaceId: workspace.id
-//   })
-//   await this.slackClient.addCheckmark(channelId, thread.ts, workspace.id);
-// }
-// else {
-//   summary = `${summary} \n\n Does anyone have a status update on this? `
-//   this.slackClient.postStatusUpdate({
-//     channelId,
-//     summary,
-//     threadTs: thread.ts,
-//     workspaceId: workspace.id
-//   })
-// }
-
-// Process thread (summarize, analyze, etc)
-// ... your thread processing logic
-// console.log("messages", messages);
