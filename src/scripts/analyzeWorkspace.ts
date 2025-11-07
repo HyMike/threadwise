@@ -12,7 +12,7 @@ import axios from 'axios';
 
 async function main() {
   const workspaceId = process.argv[2] || process.env.WORKSPACE_ID;
-  const apiUrl = process.env.API_URL;
+  const apiUrl = process.env.API_URL || 'http://localhost:3000';
 
   // Validate inputs
   if (!workspaceId) {
