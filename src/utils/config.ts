@@ -44,6 +44,33 @@ interface MultiWorkspaceAuth extends AuthConfig {
 // Combined auth type
 type SlackAuthConfig = SingleWorkspaceAuth | MultiWorkspaceAuth;
 
+// Execution modes
+export enum ExecutionMode {
+  IN_MEMORY = "in-memory",
+  KUBERNETES = "kubernetes",
+}
+
+// Kubernetes configuration
+export interface KubernetesConfig {
+  enabled: boolean;
+  namespace: string;
+  imageName: string;
+  imageTag: string;
+  secretName: string;
+  ttlSecondsAfterFinished: number;
+  backoffLimit: number;
+  resources: {
+    requests: {
+      memory: string;
+      cpu: string;
+    };
+    limits: {
+      memory: string;
+      cpu: string;
+    };
+  };
+}
+
 // Main config interface
 interface AppConfig {
   environment: "development" | "staging" | "production";
@@ -57,6 +84,10 @@ interface AppConfig {
     host: string;
   };
   llm: LLMConfig;
+  execution: {
+    mode: ExecutionMode;
+    kubernetes: KubernetesConfig;
+  };
 }
 
 // Load and validate config
@@ -64,6 +95,9 @@ function loadConfig(): AppConfig {
   const deploymentMode =
     (process.env.DEPLOYMENT_MODE as DeploymentMode) ||
     DeploymentMode.SINGLE_WORKSPACE;
+
+  const executionMode =
+    (process.env.EXECUTION_MODE as ExecutionMode) || ExecutionMode.IN_MEMORY;
 
   const baseConfig = {
     environment: validateEnvironment(process.env.NODE_ENV),
@@ -86,6 +120,30 @@ function loadConfig(): AppConfig {
       maxTokens: process.env.LLM_MAX_TOKENS
         ? parseInt(process.env.LLM_MAX_TOKENS)
         : undefined,
+    },
+    execution: {
+      mode: executionMode,
+      kubernetes: {
+        enabled: executionMode === ExecutionMode.KUBERNETES,
+        namespace: process.env.K8S_NAMESPACE || "default",
+        imageName: process.env.K8S_IMAGE_NAME || "threadwise",
+        imageTag: process.env.K8S_IMAGE_TAG || "latest",
+        secretName: process.env.K8S_SECRET_NAME || "threadwise-secrets",
+        ttlSecondsAfterFinished: parseInt(
+          process.env.K8S_TTL_SECONDS || "3600"
+        ),
+        backoffLimit: parseInt(process.env.K8S_BACKOFF_LIMIT || "3"),
+        resources: {
+          requests: {
+            memory: process.env.K8S_MEMORY_REQUEST || "256Mi",
+            cpu: process.env.K8S_CPU_REQUEST || "100m",
+          },
+          limits: {
+            memory: process.env.K8S_MEMORY_LIMIT || "512Mi",
+            cpu: process.env.K8S_CPU_LIMIT || "500m",
+          },
+        },
+      },
     },
   };
 
