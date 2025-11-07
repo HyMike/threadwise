@@ -96,6 +96,7 @@ Once the server is running, you can access:
 
 ### Testing
 
+**Manual API Testing:**
 ```bash
 # Test the API manually
 curl http://localhost:3000/health
@@ -103,6 +104,23 @@ curl http://localhost:3000/health
 # Trigger analysis for a workspace
 curl -X POST http://localhost:3000/api/workspaces/default/analyze
 ```
+
+**Automated Tests:**
+```bash
+# Start the API server first
+npm run dev
+
+# In another terminal, run the tests
+npm test
+
+# Run specific test file
+npm test workspaceAnalyzer.test.ts
+
+# Run with coverage
+npm test -- --coverage
+```
+
+See [tests/README.md](tests/README.md) for more testing details.
 
 ## Execution Modes
 
