@@ -89,63 +89,18 @@ export class KubernetesAdapter implements ExecutionAdapter {
             containers: [{
               name: 'analyzer',
               image: `${k8sConfig.imageName}:${k8sConfig.imageTag}`,
-              command: ['node'],
+              command: ['sh', '-c'],
               args: [
-                'dist/scripts/analyzeWorkspace.js',
-                workspaceId
-              ],
-              env: [
-                {
-                  name: 'WORKSPACE_ID',
-                  value: workspaceId
-                },
-                {
-                  name: 'API_URL',
-                  value: process.env.API_URL || `http://threadwise-api.${k8sConfig.namespace}.svc.cluster.local:3000`
-                },
-                {
-                  name: 'NODE_ENV',
-                  value: config.environment
-                },
-                // Load secrets from K8s secret
-                {
-                  name: 'LLM_API_KEY',
-                  valueFrom: {
-                    secretKeyRef: {
-                      name: k8sConfig.secretName,
-                      key: 'llm-api-key'
-                    }
-                  }
-                },
-                {
-                  name: 'LLM_PROVIDER',
-                  valueFrom: {
-                    secretKeyRef: {
-                      name: k8sConfig.secretName,
-                      key: 'llm-provider',
-                      optional: true
-                    }
-                  }
-                },
-                {
-                  name: 'LLM_MODEL',
-                  valueFrom: {
-                    secretKeyRef: {
-                      name: k8sConfig.secretName,
-                      key: 'llm-model',
-                      optional: true
-                    }
-                  }
-                }
+                `curl -X POST -H "Content-Type: application/json" -f --max-time 300 ${process.env.API_URL || `http://threadwise-api.${k8sConfig.namespace}.svc.cluster.local:3000`}/api/workspaces/${workspaceId}/analyze && echo "Analysis completed successfully" || (echo "Analysis failed" && exit 1)`
               ],
               resources: {
                 requests: {
-                  memory: k8sConfig.resources.requests.memory,
-                  cpu: k8sConfig.resources.requests.cpu
+                  memory: '64Mi',
+                  cpu: '50m'
                 },
                 limits: {
-                  memory: k8sConfig.resources.limits.memory,
-                  cpu: k8sConfig.resources.limits.cpu
+                  memory: '128Mi',
+                  cpu: '100m'
                 }
               }
             }]
@@ -168,34 +123,34 @@ export class KubernetesAdapter implements ExecutionAdapter {
    */
   async cleanup(): Promise<void> {
     const k8sConfig = config.execution.kubernetes;
-    
-    try {
-      const jobs = await this.k8sApi.listNamespacedJob(
-        k8sConfig.namespace,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        'app=threadwise,component=workspace-analyzer'
-      );
+    // TO-DO: Implement cleanup later. This is all just ai generated stuff below
+    // try {
+    //   const jobs = await this.k8sApi.listNamespacedJob(
+    //     k8sConfig.namespace,
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     'app=threadwise,component=workspace-analyzer'
+    //   );
 
-      const now = new Date();
-      const cleanupThreshold = new Date(now.getTime() - (k8sConfig.ttlSecondsAfterFinished * 1000));
+    //   const now = new Date();
+    //   const cleanupThreshold = new Date(now.getTime() - (k8sConfig.ttlSecondsAfterFinished * 1000));
 
-      for (const job of jobs.body.items) {
-        if (job.status?.completionTime) {
-          const completionTime = new Date(job.status.completionTime);
-          if (completionTime < cleanupThreshold && job.metadata?.name) {
-            await this.k8sApi.deleteNamespacedJob(
-              job.metadata.name,
-              k8sConfig.namespace
-            );
-            console.log(`Cleaned up old job: ${job.metadata.name}`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error cleaning up old K8s jobs:', error);
-    }
+    //   for (const job of jobs.body.items) {
+    //     if (job.status?.completionTime) {
+    //       const completionTime = new Date(job.status.completionTime);
+    //       if (completionTime < cleanupThreshold && job.metadata?.name) {
+    //         await this.k8sApi.deleteNamespacedJob(
+    //           job.metadata.name,
+    //           k8sConfig.namespace
+    //         );
+    //         console.log(`Cleaned up old job: ${job.metadata.name}`);
+    //       }
+    //     }
+    //   }
+    // } catch (error) {
+    //   console.error('Error cleaning up old K8s jobs:', error);
+    // }
   }
 }
