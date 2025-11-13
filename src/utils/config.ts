@@ -1,6 +1,5 @@
 import { config as dotenvConfig } from "dotenv";
 import { LLMProvider, LLMConfig } from "../types/llmProvider.types";
-import { JiraConfig } from "../types/jira.types";
 
 // Load environment variables from .env file
 dotenvConfig();
@@ -85,7 +84,6 @@ interface AppConfig {
     host: string;
   };
   llm: LLMConfig;
-  jiraAuth: JiraConfig;
   execution: {
     mode: ExecutionMode;
     kubernetes: KubernetesConfig;
@@ -155,29 +153,12 @@ function loadConfig(): AppConfig {
       throw new Error("SLACK_BOT_TOKEN is required in single workspace mode");
     }
 
-    if (
-      !process.env.JIRA_BASE_URL ||
-      !process.env.JIRA_EMAIL ||
-      !process.env.JIRA_API_TOKEN ||
-      !process.env.JIRA_PROJECT_KEY ||
-      !process.env.JIRA_BOARD_ID
-    ) {
-      throw new Error("Jira configuration is required");
-    }
-
     return {
       ...baseConfig,
       auth: {
         type: DeploymentMode.SINGLE_WORKSPACE,
         botToken: process.env.SLACK_BOT_TOKEN,
         channelId: process.env.SLACK_CHANNEL_ID || "",
-      },
-      jiraAuth: {
-        jiraBaseUrl: process.env.JIRA_BASE_URL,
-        email: process.env.JIRA_EMAIL,
-        apiToken: process.env.JIRA_API_TOKEN,
-        projectKey: process.env.JIRA_PROJECT_KEY,
-        boardId: parseInt(process.env.JIRA_BOARD_ID),
       },
     };
   } else {
@@ -196,17 +177,6 @@ function loadConfig(): AppConfig {
         redirectUri:
           process.env.SLACK_REDIRECT_URI ||
           "http://localhost:3000/oauth/callback",
-      },
-       // would need to fix this for multiple workspace issues.
-       jiraAuth: {
-        jiraBaseUrl: process.env.JIRA_BASE_URL || "",
-        email: process.env.JIRA_EMAIL || "",
-        apiToken: process.env.JIRA_API_TOKEN || "",
-        projectKey: process.env.JIRA_PROJECT_KEY || "",
-        boardId:
-          typeof process.env.JIRA_BOARD_ID === "string"
-            ? parseInt(process.env.JIRA_BOARD_ID)
-            : 1,
       },
     };
   }
