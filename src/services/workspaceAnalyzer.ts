@@ -1,7 +1,6 @@
 import { LLMFactory } from "../providers/llmFactory";
 import {
   slackClient,
-  SlackClientManager,
   ThreadMessage,
 } from "../clients/slack";
 import { LLMClient, LLMMessage } from "../types/llmProvider.types";
@@ -18,89 +17,119 @@ import {
   decisionDiscussionPrompt,
   statusUpdatePrompt,
 } from "../prompts/categoriesPrompts";
-import { FallbackEncoder } from "openai/internal/request-options";
 import { MESSAGE_STATUSES } from "../constants/statuses";
 import { buildResolvedSummary } from "../helpers/buildResolvedSummary";
 
-// src/jobs/threadAnalyzer.ts
 interface Workspace {
   id: string;
   teamId: string;
   channels: string[];
   settings: {
     threadThreshold: number;
-    // other workspace-specific settings
   };
 }
 
-export class ThreadAnalyzerJob {
-  private slackClient: SlackClientManager;
-  private userNameCache = new Map<string, string>(); // id, real_name
+interface AnalysisResult {
+  workspaceId: string;
+  processedThreads: number;
+  timestamp: Date;
+}
 
-  constructor() {
-    this.slackClient = slackClient;
-  }
+export class WorkspaceAnalyzer {
+  private userNameCache = new Map<string, string>();
 
-  async processAllWorkspaces() {
+  /**
+   * Analyze a single workspace
+   */
+  async analyzeWorkspace(workspaceId: string): Promise<AnalysisResult> {
+    const workspace = await this.getWorkspace(workspaceId);
+    let processedCount = 0;
+
     try {
-      // 1. Get all active workspaces from DB
-      //   const workspaces = await db.workspaces.findAll({
-      //     where: { isActive: true }
-      //   }); // TO-DO: Implement database lookup for workspaces, hardcoding sample for now
-      const workspaces = [
-        {
-          id: null as unknown as string,
-          channels: ["C06KQR10T4N"],
-          settings: {
-            threadThreshold: 2,
-          },
-        },
-      ];
+      // Cache user names for this workspace
+      this.userNameCache = await slackClient.getAllUsersInWorkSpace(workspace.id);
 
-      // 2. Process workspaces in chunks to avoid memory issues
-      const CHUNK_SIZE = 5;
-      for (let i = 0; i < workspaces.length; i += CHUNK_SIZE) {
-        const chunk = workspaces.slice(i, i + CHUNK_SIZE);
-
-        // Process chunk concurrently
-        await Promise.all(
-          chunk.map((workspace) =>
-            this.processWorkspace(workspace as Workspace)
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Error processing workspaces:", error);
-    }
-  }
-
-  async processWorkspace(workspace: Workspace) {
-    try {
-      this.userNameCache = await this.slackClient.getAllUsersInWorkSpace(
-        workspace.id
-      );
-      // Process each channel in the workspace
+      // Process each channel
       for (const channelId of workspace.channels) {
-        // Get threads using workspace-specific client
-        const threads = await this.slackClient.getThreadRoots(
-          channelId,
-          workspace.id
-        );
+        const threads = await slackClient.getThreadRoots(channelId, workspace.id);
 
-        // Process each thread
         for (const thread of threads) {
-          // console.log("thread", thread);
           if (this.shouldProcessThread(thread, workspace.settings)) {
-            // console.log("processing thread", thread);
             await this.processThread(thread, channelId, workspace);
+            processedCount++;
           }
         }
       }
+
+      return {
+        workspaceId: workspace.id,
+        processedThreads: processedCount,
+        timestamp: new Date()
+      };
     } catch (error) {
-      console.error(`Error processing workspace ${workspace.id}:`, error);
-      // Log workspace error for monitoring
-      await console.error(`Error processing workspace ${workspace.id}:`, error);
+      console.error(`Error analyzing workspace ${workspaceId}:`, error);
+      throw error;
     }
+  }
+
+  /**
+   * Analyze all workspaces (used for manual triggers)
+   */
+  async analyzeAllWorkspaces(): Promise<AnalysisResult[]> {
+    const workspaces = await this.getAllWorkspaces();
+    const results: AnalysisResult[] = [];
+
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < workspaces.length; i += CHUNK_SIZE) {
+      const chunk = workspaces.slice(i, i + CHUNK_SIZE);
+
+      const chunkResults = await Promise.allSettled(
+        chunk.map(workspace => this.analyzeWorkspace(workspace.id))
+      );
+
+      chunkResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          console.error(`Failed to analyze workspace ${chunk[index].id}:`, result.reason);
+          results.push({
+            workspaceId: chunk[index].id,
+            processedThreads: 0,
+            timestamp: new Date()
+          });
+        }
+      });
+    }
+
+    return results;
+  }
+
+  private async getWorkspace(workspaceId: string): Promise<Workspace> {
+    // TODO: Implement database query
+    // For now, return the hardcoded workspace
+    return {
+      id: workspaceId,
+      teamId: workspaceId,
+      channels: ["C06KQR10T4N"],
+      settings: {
+        threadThreshold: 2,
+      },
+    };
+  }
+
+  private async getAllWorkspaces(): Promise<Workspace[]> {
+    // TODO: Implement database query
+    // For now, return hardcoded workspace
+    return [
+      {
+        id: "default",
+        teamId: "default",
+        channels: ["C06KQR10T4N"],
+        settings: {
+          threadThreshold: 2,
+        },
+      },
+    ];
   }
 
   private shouldProcessThread(thread: ThreadMessage, settings: any): boolean {
@@ -112,10 +141,8 @@ export class ThreadAnalyzerJob {
     channelId: string,
     workspace: Workspace
   ) {
-    // this.slackClient.removeMessage(channelId, workspace.id,'p1762133256169839');
-
     try {
-      const messages = await this.slackClient.getThreadMessages(
+      const messages = await slackClient.getThreadMessages(
         channelId,
         thread.ts,
         workspace.id
@@ -137,10 +164,7 @@ export class ThreadAnalyzerJob {
           messages.map(async (msg) => {
             let userName = this.userNameCache.get(msg.user);
             if (!userName) {
-              userName = await this.slackClient.getUserName(
-                msg.user,
-                workspace.id
-              );
+              userName = await slackClient.getUserName(msg.user, workspace.id);
               this.userNameCache.set(msg.user, userName);
             }
             return {
@@ -155,7 +179,7 @@ export class ThreadAnalyzerJob {
 
       const threadCategorized: CategorizingThread =
         await this.categorizeThreads(llmClient, enhancedContext);
-      const { category, tone, resolution } = threadCategorized;
+      const { category } = threadCategorized;
 
       const promptMap = {
         technical_issue: technicalIssuePrompt,
@@ -164,7 +188,7 @@ export class ThreadAnalyzerJob {
         status_update: statusUpdatePrompt,
       };
 
-      console.log(`filteredThread category: ${category}`);
+      console.log(`Thread category: ${category}`);
 
       if (!!category && category !== "casual_chat") {
         const summarizedResponse = await this.summarizeResponse(
@@ -175,24 +199,22 @@ export class ThreadAnalyzerJob {
         );
 
         const { summary, status } = summarizedResponse;
-        // Return formatted resolved, unresolved or in progress summary for slack base on the status.
         const resolvedSummary = buildResolvedSummary(summarizedResponse);
+
         if (status === MESSAGE_STATUSES.RESOLVED) {
-          await this.slackClient.postStatusUpdate({
+          await slackClient.postStatusUpdate({
             channelId,
             resolvedSummary,
             threadTs: thread.ts,
             workspaceId: workspace.id,
             fallBackSummary: summary,
           });
-          await this.slackClient.addCheckmark(
-            channelId,
-            thread.ts,
-            workspace.id
-          );
-        } else if (status === MESSAGE_STATUSES.UNRESOLVED || status === MESSAGE_STATUSES.IN_PROGRESS) {
-          
-          await this.slackClient.postStatusUpdate({
+          await slackClient.addCheckmark(channelId, thread.ts, workspace.id);
+        } else if (
+          status === MESSAGE_STATUSES.UNRESOLVED ||
+          status === MESSAGE_STATUSES.IN_PROGRESS
+        ) {
+          await slackClient.postStatusUpdate({
             channelId,
             resolvedSummary,
             threadTs: thread.ts,
@@ -203,15 +225,10 @@ export class ThreadAnalyzerJob {
       }
     } catch (error) {
       console.error(`Error processing thread ${thread.ts}:`, error);
+      throw error;
     }
   }
 
-  /**
-   * Takes thread message to process by a llm and return the category,
-   * @param llmClient
-   * @param enhancedContext
-   * @returns
-   */
   private async categorizeThreads(
     llmClient: LLMClient,
     enhancedContext: EnhancedThreadContext
@@ -228,7 +245,7 @@ export class ThreadAnalyzerJob {
 
       return JSON.parse(response.content);
     } catch (error) {
-      console.error(`Error filtering thread:`, error);
+      console.error(`Error categorizing thread:`, error);
       throw error;
     }
   }
@@ -249,6 +266,7 @@ export class ThreadAnalyzerJob {
         Filter Results: ${JSON.stringify(filteredThreadCategory, null, 2)}`,
         },
       ]);
+      
       console.log(JSON.parse(summaryResponse.content));
       return JSON.parse(summaryResponse.content);
     } catch (error) {
