@@ -4,7 +4,11 @@ export interface ThreadInfo {
   reply_count?: number;
   reply_users_count?: number;
   reply_users?: string[];
-  reactions?: string;
+  reactions?: Array<{
+    name: string;
+    users: string[];
+    counter: number;
+  }>;
   is_locked?: boolean;
 }
 
@@ -34,4 +38,13 @@ export interface CategorizingThread {
     | "casual_chat";
   tone: "serious" | "neutral" | "playful" | "sarcastic";
   resolution: "resolved" | "unresolved" | "not_applicable";
+}
+
+export interface JiraTasks {
+  summary: string;
+  description: string;
+}
+
+export interface JiraTasksObj {
+  tasks: JiraTasks[];
 }

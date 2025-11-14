@@ -10,6 +10,7 @@ import {
   CategorizingThread,
   SummaryResponse,
 } from "@/types/threadAnalysis.types";
+import { JiraTasks, JiraTasksObj } from "@/types/jira.types";
 import { categorizingPrompt } from "../prompts/filterPrompt";
 import {
   questionAnswerPrompt,
@@ -19,6 +20,8 @@ import {
 } from "../prompts/categoriesPrompts";
 import { MESSAGE_STATUSES } from "../constants/statuses";
 import { buildResolvedSummary } from "../helpers/buildResolvedSummary";
+import { taskExtractionPrompt } from "../prompts/filterPrompt";
+import { jiraClient, JiraClientManager } from "../clients/jira";
 
 interface Workspace {
   id: string;
@@ -157,7 +160,7 @@ export class WorkspaceAnalyzer {
           reply_count: thread.reply_count,
           reply_users_count: thread.reply_users_count,
           reply_users: thread.reply_users,
-          reactions: thread.reactions,
+          reactions: thread.reactions, //this is just the root reactions.
           is_locked: thread.is_locked,
         },
         messages: await Promise.all(
@@ -179,8 +182,7 @@ export class WorkspaceAnalyzer {
 
       const threadCategorized: CategorizingThread =
         await this.categorizeThreads(llmClient, enhancedContext);
-      const { category } = threadCategorized;
-
+      const { category, tone, resolution } = threadCategorized;
       const promptMap = {
         technical_issue: technicalIssuePrompt,
         question_answer: questionAnswerPrompt,
@@ -188,9 +190,19 @@ export class WorkspaceAnalyzer {
         status_update: statusUpdatePrompt,
       };
 
-      console.log(`Thread category: ${category}`);
+      console.log(`Category: ${category}`);
 
       if (!!category && category !== "casual_chat") {
+        //  still need to handle the case here of resolution being resolved.
+        //what if they are not summarized yet but they're turn out to be resolved. We don't want to create jira ticket for those.
+        const extractedTask: JiraTasksObj = await this.extractTasks(
+          llmClient,
+          taskExtractionPrompt,
+          enhancedContext
+        );
+        console.log(extractedTask);
+        await jiraClient.createIssueInBacklog(workspace.id, extractedTask);
+
         const summarizedResponse = await this.summarizeResponse(
           llmClient,
           promptMap[category],
@@ -209,7 +221,11 @@ export class WorkspaceAnalyzer {
             workspaceId: workspace.id,
             fallBackSummary: summary,
           });
-          await slackClient.addCheckmark(channelId, thread.ts, workspace.id);
+          await slackClient.addCheckmark(
+            channelId,
+            thread.ts,
+            workspace.id
+          );
         } else if (
           status === MESSAGE_STATUSES.UNRESOLVED ||
           status === MESSAGE_STATUSES.IN_PROGRESS
@@ -269,6 +285,27 @@ export class WorkspaceAnalyzer {
       
       console.log(JSON.parse(summaryResponse.content));
       return JSON.parse(summaryResponse.content);
+    } catch (error) {
+      console.warn(error);
+      throw error;
+    }
+  }
+
+  private async extractTasks(
+    llmClient: LLMClient,
+    prompt: LLMMessage,
+    enhancedContext: EnhancedThreadContext
+  ): Promise<JiraTasksObj> {
+    try {
+      const extractedTask = await llmClient.generateResponse([
+        prompt,
+        {
+          role: "user",
+          content: `Analyze this technical issue thread:
+          Thread Data: ${JSON.stringify(enhancedContext, null, 2)}`,
+        },
+      ]);
+      return JSON.parse(extractedTask.content);
     } catch (error) {
       console.warn(error);
       throw error;
