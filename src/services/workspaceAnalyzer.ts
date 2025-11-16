@@ -1,8 +1,5 @@
 import { LLMFactory } from "../providers/llmFactory";
-import {
-  slackClient,
-  ThreadMessage,
-} from "../clients/slack";
+import { slackClient, ThreadMessage } from "../clients/slack";
 import { LLMClient, LLMMessage } from "../types/llmProvider.types";
 import { config } from "../utils/config";
 import {
@@ -50,11 +47,16 @@ export class WorkspaceAnalyzer {
 
     try {
       // Cache user names for this workspace
-      this.userNameCache = await slackClient.getAllUsersInWorkSpace(workspace.id);
+      this.userNameCache = await slackClient.getAllUsersInWorkSpace(
+        workspace.id
+      );
 
       // Process each channel
       for (const channelId of workspace.channels) {
-        const threads = await slackClient.getThreadRoots(channelId, workspace.id);
+        const threads = await slackClient.getThreadRoots(
+          channelId,
+          workspace.id
+        );
 
         for (const thread of threads) {
           if (this.shouldProcessThread(thread, workspace.settings)) {
@@ -67,7 +69,7 @@ export class WorkspaceAnalyzer {
       return {
         workspaceId: workspace.id,
         processedThreads: processedCount,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error(`Error analyzing workspace ${workspaceId}:`, error);
@@ -87,18 +89,21 @@ export class WorkspaceAnalyzer {
       const chunk = workspaces.slice(i, i + CHUNK_SIZE);
 
       const chunkResults = await Promise.allSettled(
-        chunk.map(workspace => this.analyzeWorkspace(workspace.id))
+        chunk.map((workspace) => this.analyzeWorkspace(workspace.id))
       );
 
       chunkResults.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           results.push(result.value);
         } else {
-          console.error(`Failed to analyze workspace ${chunk[index].id}:`, result.reason);
+          console.error(
+            `Failed to analyze workspace ${chunk[index].id}:`,
+            result.reason
+          );
           results.push({
             workspaceId: chunk[index].id,
             processedThreads: 0,
-            timestamp: new Date()
+            timestamp: new Date(),
           });
         }
       });
@@ -221,11 +226,7 @@ export class WorkspaceAnalyzer {
             workspaceId: workspace.id,
             fallBackSummary: summary,
           });
-          await slackClient.addCheckmark(
-            channelId,
-            thread.ts,
-            workspace.id
-          );
+          await slackClient.addCheckmark(channelId, thread.ts, workspace.id);
         } else if (
           status === MESSAGE_STATUSES.UNRESOLVED ||
           status === MESSAGE_STATUSES.IN_PROGRESS
@@ -282,7 +283,7 @@ export class WorkspaceAnalyzer {
         Filter Results: ${JSON.stringify(filteredThreadCategory, null, 2)}`,
         },
       ]);
-      
+
       console.log(JSON.parse(summaryResponse.content));
       return JSON.parse(summaryResponse.content);
     } catch (error) {

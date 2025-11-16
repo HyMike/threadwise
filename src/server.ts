@@ -1,6 +1,6 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { config } from './utils/config';
-import { workspaceAnalyzerRouter } from './routes/analyzer';
+import express, { Request, Response, NextFunction } from "express";
+import { config } from "./utils/config";
+import { workspaceAnalyzerRouter } from "./routes/analyzer";
 
 const app = express();
 
@@ -15,31 +15,31 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ 
-    status: 'ok',
+app.get("/health", (req: Request, res: Response) => {
+  res.json({
+    status: "ok",
     environment: config.environment,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
 // API routes
-app.use('/api/workspaces', workspaceAnalyzerRouter);
+app.use("/api/workspaces", workspaceAnalyzerRouter);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
-  res.status(404).json({ 
-    success: false, 
-    error: 'Endpoint not found' 
+  res.status(404).json({
+    success: false,
+    error: "Endpoint not found",
   });
 });
 
 // Error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('API Error:', err);
-  res.status(500).json({ 
-    success: false, 
-    error: err.message || 'Internal server error'
+  console.error("API Error:", err);
+  res.status(500).json({
+    success: false,
+    error: err.message || "Internal server error",
   });
 });
 
