@@ -110,7 +110,10 @@ export class KubernetesAdapter implements ExecutionAdapter {
     };
 
     try {
-      await this.k8sApi.createNamespacedJob(k8sConfig.namespace, jobManifest);
+      await this.k8sApi.createNamespacedJob({
+      namespace: k8sConfig.namespace,
+      body: jobManifest
+    });
       console.log(`Created K8s job: ${jobName} in namespace ${k8sConfig.namespace}`);
     } catch (error: any) {
       console.error(`Failed to create K8s job ${jobName}:`, error.body || error.message);
