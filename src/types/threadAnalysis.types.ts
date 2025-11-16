@@ -49,4 +49,4 @@ export interface JiraTasksObj {
   tasks: JiraTasks[];
 }
 
-  // testing out changes from github actions
+// testing out changes from github actions
