@@ -77,6 +77,7 @@ Tests use mocks for external dependencies located in `tests/__mocks__/`:
 - **llm.mock.ts** - Mocks LLM API calls (OpenAI, etc.)
 
 This allows tests to run fast and reliably without:
+
 - Hitting Slack API rate limits
 - Requiring valid API credentials
 - Depending on external service availability
@@ -93,15 +94,18 @@ This allows tests to run fast and reliably without:
 ### Troubleshooting
 
 **Tests timing out:**
+
 - Increase the timeout: `jest.setTimeout(300000)` in the test
 - Check if the API server is running
 - Verify your LLM API key is valid
 
 **Connection refused:**
+
 - Make sure the API server is running on the correct port
 - Check API_URL environment variable
 
 **Tests failing:**
+
 - Check the API server logs for errors
 - Verify your .env configuration
 - Make sure you have threads in the configured Slack channel

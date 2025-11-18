@@ -18,7 +18,9 @@ export interface ExecutionAdapter {
   /**
    * Execute analysis for multiple workspaces
    */
-  executeWorkspaces(workspaceIds: string[]): Promise<WorkspaceExecutionResult[]>;
+  executeWorkspaces(
+    workspaceIds: string[]
+  ): Promise<WorkspaceExecutionResult[]>;
 
   /**
    * Clean up resources (optional)

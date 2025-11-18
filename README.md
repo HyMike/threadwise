@@ -5,6 +5,7 @@ Threadwise is an app you can self-host to serve as your helpful coworker who pro
 ## Getting Started
 
 ### Prerequisites
+
 1. Slack bot with permissions: `channels:history`, `channels:read`, `chat:write`, `reactions:write`, `users:read`
 2. OpenAI API Key or other LLM provider
 3. Node.js 18+ and npm
@@ -23,6 +24,7 @@ cp .env.example .env
 ### Running the Application
 
 **Development Mode:**
+
 ```bash
 # Run API server only
 npm run dev
@@ -35,6 +37,7 @@ npm run dev:all
 ```
 
 **Production Mode:**
+
 ```bash
 # Build the application
 npm run build
@@ -97,6 +100,7 @@ Once the server is running, you can access:
 ### Testing
 
 **Manual API Testing:**
+
 ```bash
 # Test the API manually
 curl http://localhost:3000/health
@@ -106,6 +110,7 @@ curl -X POST http://localhost:3000/api/workspaces/default/analyze
 ```
 
 **Automated Tests:**
+
 ```bash
 # Start the API server first
 npm run dev
@@ -127,7 +132,9 @@ See [tests/README.md](tests/README.md) for more testing details.
 Threadwise supports two execution modes for workspace analysis:
 
 ### 1. In-Memory Mode (Default)
+
 Direct API calls from the cron orchestrator to the API server. Best for:
+
 - Development and testing
 - Small number of workspaces (<50)
 - Simple infrastructure requirements
@@ -138,7 +145,9 @@ EXECUTION_MODE=in-memory
 ```
 
 ### 2. Kubernetes Jobs Mode
+
 Each workspace analysis runs as an isolated Kubernetes job. Best for:
+
 - Production deployments with many workspaces
 - Need for resource isolation per workspace
 - Horizontal scaling across K8s cluster
@@ -151,6 +160,7 @@ EXECUTION_MODE=kubernetes
 ## Kubernetes Deployment
 
 ### Prerequisites
+
 - Kubernetes cluster (1.19+)
 - kubectl configured
 - Docker registry for your images
@@ -209,24 +219,24 @@ spec:
         component: api
     spec:
       containers:
-      - name: api
-        image: your-registry/threadwise:latest
-        ports:
-        - containerPort: 3000
-        env:
-        - name: DEPLOYMENT_MODE
-          value: "single"
-        - name: EXECUTION_MODE
-          value: "kubernetes"
-        - name: K8S_NAMESPACE
-          value: "default"
-        - name: K8S_IMAGE_NAME
-          value: "your-registry/threadwise"
-        - name: K8S_IMAGE_TAG
-          value: "latest"
-        envFrom:
-        - secretRef:
-            name: threadwise-secrets
+        - name: api
+          image: your-registry/threadwise:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DEPLOYMENT_MODE
+              value: "single"
+            - name: EXECUTION_MODE
+              value: "kubernetes"
+            - name: K8S_NAMESPACE
+              value: "default"
+            - name: K8S_IMAGE_NAME
+              value: "your-registry/threadwise"
+            - name: K8S_IMAGE_TAG
+              value: "latest"
+          envFrom:
+            - secretRef:
+                name: threadwise-secrets
 ---
 apiVersion: v1
 kind: Service
@@ -237,8 +247,8 @@ spec:
     app: threadwise
     component: api
   ports:
-  - port: 3000
-    targetPort: 3000
+    - port: 3000
+      targetPort: 3000
 ```
 
 ### Step 4: Deploy Cron Orchestrator
@@ -262,16 +272,16 @@ spec:
         component: cron
     spec:
       containers:
-      - name: cron
-        image: your-registry/threadwise:latest
-        command: ["node", "dist/jobs/cronOrchestrator.js"]
-        env:
-        - name: EXECUTION_MODE
-          value: "kubernetes"
-        - name: API_URL
-          value: "http://threadwise-api.default.svc.cluster.local:3000"
-        - name: CRON_SCHEDULE
-          value: "*/15 * * * *"
+        - name: cron
+          image: your-registry/threadwise:latest
+          command: ["node", "dist/jobs/cronOrchestrator.js"]
+          env:
+            - name: EXECUTION_MODE
+              value: "kubernetes"
+            - name: API_URL
+              value: "http://threadwise-api.default.svc.cluster.local:3000"
+            - name: CRON_SCHEDULE
+              value: "*/15 * * * *"
 ```
 
 ### Step 5: Grant RBAC Permissions
@@ -290,9 +300,9 @@ kind: Role
 metadata:
   name: threadwise-job-manager
 rules:
-- apiGroups: ["batch"]
-  resources: ["jobs"]
-  verbs: ["create", "get", "list", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -303,8 +313,8 @@ roleRef:
   kind: Role
   name: threadwise-job-manager
 subjects:
-- kind: ServiceAccount
-  name: threadwise-cron
+  - kind: ServiceAccount
+    name: threadwise-cron
 ```
 
 Update the cron deployment to use the service account:

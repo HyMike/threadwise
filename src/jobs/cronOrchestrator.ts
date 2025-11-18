@@ -1,7 +1,7 @@
-import cron from 'node-cron';
-import { config, ExecutionMode } from '../utils/config';
-import { ExecutionAdapter } from '../adapters/executionAdapter';
-import { ExecutionAdapterFactory } from '../adapters/executionAdapterFactory';
+import cron from "node-cron";
+import { config, ExecutionMode } from "../utils/config";
+import { ExecutionAdapter } from "../adapters/executionAdapter";
+import { ExecutionAdapterFactory } from "../adapters/executionAdapterFactory";
 
 interface Workspace {
   id: string;
@@ -15,7 +15,9 @@ class CronOrchestrator {
   constructor() {
     // Create the appropriate execution adapter based on config
     this.executionAdapter = ExecutionAdapterFactory.createAdapter();
-    console.log(`CronOrchestrator initialized with ${config.execution.mode} execution mode`);
+    console.log(
+      `CronOrchestrator initialized with ${config.execution.mode} execution mode`
+    );
   }
 
   /**
@@ -23,7 +25,7 @@ class CronOrchestrator {
    */
   async triggerWorkspaceAnalysis(): Promise<void> {
     if (this.isRunning) {
-      console.log('Analysis already running, skipping this cycle');
+      console.log("Analysis already running, skipping this cycle");
       return;
     }
 
@@ -31,29 +33,35 @@ class CronOrchestrator {
     const startTime = Date.now();
 
     try {
-      console.log(`[${new Date().toISOString()}] Starting workspace analysis cycle`);
+      console.log(
+        `[${new Date().toISOString()}] Starting workspace analysis cycle`
+      );
       console.log(`Execution mode: ${config.execution.mode}`);
-      
+
       // Get all workspaces from database
       const workspaces = await this.getAllWorkspaces();
       console.log(`Found ${workspaces.length} workspaces to analyze`);
 
       // Execute analysis using the configured adapter
-      const workspaceIds = workspaces.map(w => w.id);
-      const results = await this.executionAdapter.executeWorkspaces(workspaceIds);
+      const workspaceIds = workspaces.map((w) => w.id);
+      const results = await this.executionAdapter.executeWorkspaces(
+        workspaceIds
+      );
 
       // Log results
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
+      const successful = results.filter((r) => r.success).length;
+      const failed = results.filter((r) => !r.success).length;
       const duration = Date.now() - startTime;
 
       console.log(`Analysis cycle completed in ${duration}ms`);
       console.log(`Results: ${successful} successful, ${failed} failed`);
 
       // Log failed workspaces
-      results.forEach(result => {
+      results.forEach((result) => {
         if (!result.success) {
-          console.error(`Failed to analyze workspace ${result.workspaceId}: ${result.error}`);
+          console.error(
+            `Failed to analyze workspace ${result.workspaceId}: ${result.error}`
+          );
         }
       });
 
@@ -61,9 +69,8 @@ class CronOrchestrator {
       if (this.executionAdapter.cleanup) {
         await this.executionAdapter.cleanup();
       }
-
     } catch (error) {
-      console.error('Error in analysis cycle:', error);
+      console.error("Error in analysis cycle:", error);
     } finally {
       this.isRunning = false;
     }
@@ -77,16 +84,16 @@ class CronOrchestrator {
     // For now, return hardcoded workspace
     return [
       {
-        id: 'default',
-        channels: ['C06KQR10T4N']
-      }
+        id: "default",
+        channels: ["C06KQR10T4N"],
+      },
     ];
   }
 
   /**
    * Start the cron scheduler
    */
-  start(schedule: string = '*/15 * * * *'): void {
+  start(schedule: string = "*/15 * * * *"): void {
     console.log(`Starting cron orchestrator with schedule: ${schedule}`);
 
     // Validate cron expression
@@ -99,11 +106,11 @@ class CronOrchestrator {
       this.triggerWorkspaceAnalysis();
     });
 
-    console.log('✅ Cron orchestrator started successfully');
+    console.log("✅ Cron orchestrator started successfully");
 
     // Optional: Run immediately on start
-    if (process.env.RUN_ON_START === 'true') {
-      console.log('Running initial analysis...');
+    if (process.env.RUN_ON_START === "true") {
+      console.log("Running initial analysis...");
       this.triggerWorkspaceAnalysis();
     }
   }
@@ -120,6 +127,6 @@ export const cronOrchestrator = new CronOrchestrator();
 
 // If this file is run directly, start the cron
 if (require.main === module) {
-  const schedule = process.env.CRON_SCHEDULE || '*/15 * * * *';
+  const schedule = process.env.CRON_SCHEDULE || "*/15 * * * *";
   cronOrchestrator.start(schedule);
 }

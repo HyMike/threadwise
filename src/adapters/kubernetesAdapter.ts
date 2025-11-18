@@ -1,6 +1,6 @@
-import * as k8s from '@kubernetes/client-node';
-import { ExecutionAdapter, WorkspaceExecutionResult } from './executionAdapter';
-import { config } from '../utils/config';
+import * as k8s from "@kubernetes/client-node";
+import { ExecutionAdapter, WorkspaceExecutionResult } from "./executionAdapter";
+import { config } from "../utils/config";
 
 export class KubernetesAdapter implements ExecutionAdapter {
   private k8sApi: k8s.BatchV1Api;
@@ -9,48 +9,57 @@ export class KubernetesAdapter implements ExecutionAdapter {
   constructor() {
     // Initialize Kubernetes client
     this.k8sConfig = new k8s.KubeConfig();
-    
+
     try {
       // Try to load from default kubeconfig (~/.kube/config or in-cluster)
       this.k8sConfig.loadFromDefault();
     } catch (error) {
-      console.warn('Failed to load Kubernetes config from default location');
-      throw new Error('Kubernetes config not found. Make sure kubectl is configured or running in a K8s cluster.');
+      console.warn("Failed to load Kubernetes config from default location");
+      throw new Error(
+        "Kubernetes config not found. Make sure kubectl is configured or running in a K8s cluster."
+      );
     }
-    
+
     this.k8sApi = this.k8sConfig.makeApiClient(k8s.BatchV1Api);
   }
 
-  async executeWorkspace(workspaceId: string): Promise<WorkspaceExecutionResult> {
+  async executeWorkspace(
+    workspaceId: string
+  ): Promise<WorkspaceExecutionResult> {
     try {
       await this.createWorkspaceJob(workspaceId);
       return {
         workspaceId,
-        success: true
+        success: true,
       };
     } catch (error: any) {
-      console.error(`Failed to create K8s job for workspace ${workspaceId}:`, error);
+      console.error(
+        `Failed to create K8s job for workspace ${workspaceId}:`,
+        error
+      );
       return {
         workspaceId,
         success: false,
-        error: error.message || 'Failed to create Kubernetes job'
+        error: error.message || "Failed to create Kubernetes job",
       };
     }
   }
 
-  async executeWorkspaces(workspaceIds: string[]): Promise<WorkspaceExecutionResult[]> {
+  async executeWorkspaces(
+    workspaceIds: string[]
+  ): Promise<WorkspaceExecutionResult[]> {
     const results = await Promise.allSettled(
-      workspaceIds.map(id => this.executeWorkspace(id))
+      workspaceIds.map((id) => this.executeWorkspace(id))
     );
 
     return results.map((result, index) => {
-      if (result.status === 'fulfilled') {
+      if (result.status === "fulfilled") {
         return result.value;
       } else {
         return {
           workspaceId: workspaceIds[index],
           success: false,
-          error: result.reason?.message || 'Unknown error'
+          error: result.reason?.message || "Unknown error",
         };
       }
     });
@@ -59,19 +68,20 @@ export class KubernetesAdapter implements ExecutionAdapter {
   private async createWorkspaceJob(workspaceId: string): Promise<void> {
     const k8sConfig = config.execution.kubernetes;
     const timestamp = Date.now();
-    const jobName = `workspace-analyzer-${workspaceId}-${timestamp}`.toLowerCase();
+    const jobName =
+      `workspace-analyzer-${workspaceId}-${timestamp}`.toLowerCase();
 
     const jobManifest: k8s.V1Job = {
-      apiVersion: 'batch/v1',
-      kind: 'Job',
+      apiVersion: "batch/v1",
+      kind: "Job",
       metadata: {
         name: jobName,
         namespace: k8sConfig.namespace,
         labels: {
-          app: 'threadwise',
-          component: 'workspace-analyzer',
-          workspaceId: workspaceId
-        }
+          app: "threadwise",
+          component: "workspace-analyzer",
+          workspaceId: workspaceId,
+        },
       },
       spec: {
         ttlSecondsAfterFinished: k8sConfig.ttlSecondsAfterFinished,
@@ -79,41 +89,54 @@ export class KubernetesAdapter implements ExecutionAdapter {
         template: {
           metadata: {
             labels: {
-              app: 'threadwise',
-              component: 'workspace-analyzer',
-              workspaceId: workspaceId
-            }
+              app: "threadwise",
+              component: "workspace-analyzer",
+              workspaceId: workspaceId,
+            },
           },
           spec: {
-            restartPolicy: 'OnFailure',
-            containers: [{
-              name: 'analyzer',
-              image: `${k8sConfig.imageName}:${k8sConfig.imageTag}`,
-              command: ['sh', '-c'],
-              args: [
-                `curl -X POST -H "Content-Type: application/json" -f --max-time 300 ${process.env.API_URL || `http://threadwise-api.${k8sConfig.namespace}.svc.cluster.local:3000`}/api/workspaces/${workspaceId}/analyze && echo "Analysis completed successfully" || (echo "Analysis failed" && exit 1)`
-              ],
-              resources: {
-                requests: {
-                  memory: '64Mi',
-                  cpu: '50m'
+            restartPolicy: "OnFailure",
+            containers: [
+              {
+                name: "analyzer",
+                image: `${k8sConfig.imageName}:${k8sConfig.imageTag}`,
+                command: ["sh", "-c"],
+                args: [
+                  `curl -X POST -H "Content-Type: application/json" -f --max-time 300 ${
+                    process.env.API_URL ||
+                    `http://threadwise-api.${k8sConfig.namespace}.svc.cluster.local:3000`
+                  }/api/workspaces/${workspaceId}/analyze && echo "Analysis completed successfully" || (echo "Analysis failed" && exit 1)`,
+                ],
+                resources: {
+                  requests: {
+                    memory: "64Mi",
+                    cpu: "50m",
+                  },
+                  limits: {
+                    memory: "128Mi",
+                    cpu: "100m",
+                  },
                 },
-                limits: {
-                  memory: '128Mi',
-                  cpu: '100m'
-                }
-              }
-            }]
-          }
-        }
-      }
+              },
+            ],
+          },
+        },
+      },
     };
 
     try {
-      await this.k8sApi.createNamespacedJob(k8sConfig.namespace, jobManifest);
-      console.log(`Created K8s job: ${jobName} in namespace ${k8sConfig.namespace}`);
+      await this.k8sApi.createNamespacedJob({
+        namespace: k8sConfig.namespace,
+        body: jobManifest,
+      });
+      console.log(
+        `Created K8s job: ${jobName} in namespace ${k8sConfig.namespace}`
+      );
     } catch (error: any) {
-      console.error(`Failed to create K8s job ${jobName}:`, error.body || error.message);
+      console.error(
+        `Failed to create K8s job ${jobName}:`,
+        error.body || error.message
+      );
       throw error;
     }
   }
