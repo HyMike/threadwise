@@ -1,0 +1,15 @@
+# SOPS configuration file
+# This tells SOPS which keys to use for encryption
+
+creation_rules:
+  # Dev environment - use age key
+  - path_regex: k8s/overlays/dev/secrets\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: >-
+      age1qx62w8zq4zgsaygqa5lhwh0w8vgy50suwj523wqqcfeuqa9ucvpqh5duq7
+  
+  # Prod environment - use age key (different key for prod)
+  - path_regex: k8s/overlays/prod/secrets\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: >-
+      age1qx62w8zq4zgsaygqa5lhwh0w8vgy50suwj523wqqcfeuqa9ucvpqh5duq7

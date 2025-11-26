@@ -1,0 +1,35 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: threadwise-job-manager
+  namespace: threadwise
+  labels:
+    app: threadwise
+rules:
+  # Permissions to create and manage jobs (for kubernetes execution mode)
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: threadwise-job-manager
+  namespace: threadwise
+  labels:
+    app: threadwise
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: threadwise-job-manager
+subjects:
+  - kind: ServiceAccount
+    name: threadwise-api
+    namespace: threadwise
+

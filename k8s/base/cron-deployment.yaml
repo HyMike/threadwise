@@ -1,0 +1,174 @@
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: threadwise-cron
+#   namespace: threadwise
+#   labels:
+#     app: threadwise
+#     component: cron
+# spec:
+#   replicas: 1  # Only run one cron orchestrator
+#   selector:
+#     matchLabels:
+#       app: threadwise
+#       component: cron
+#   template:
+#     metadata:
+#       labels:
+#         app: threadwise
+#         component: cron
+#     spec:
+#       serviceAccountName: threadwise-api  # Reuse same SA
+#       containers:
+#         - name: cron
+#           image: your-registry/threadwise:latest
+#           imagePullPolicy: Always
+#           command: ["node", "dist/index.js"]  # Runs with ENABLE_CRON=true
+#           env:
+#             # Enable cron in this deployment
+#             - name: ENABLE_CRON
+#               value: "true"
+            
+#             # Load all config from ConfigMap
+#             - name: NODE_ENV
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: NODE_ENV
+#             - name: PORT
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: PORT
+#             - name: HOST
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: HOST
+#             - name: DEPLOYMENT_MODE
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: DEPLOYMENT_MODE
+#             - name: EXECUTION_MODE
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: EXECUTION_MODE
+#             - name: CRON_SCHEDULE
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: CRON_SCHEDULE
+#             - name: RUN_ON_START
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: RUN_ON_START
+#             - name: LOG_LEVEL
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: LOG_LEVEL
+#             - name: LLM_PROVIDER
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: LLM_PROVIDER
+#             - name: LLM_MODEL
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: LLM_MODEL
+#             - name: LLM_TEMPERATURE
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: LLM_TEMPERATURE
+#             - name: LLM_MAX_TOKENS
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: LLM_MAX_TOKENS
+#             - name: K8S_NAMESPACE
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_NAMESPACE
+#             - name: K8S_IMAGE_NAME
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_IMAGE_NAME
+#             - name: K8S_IMAGE_TAG
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_IMAGE_TAG
+#             - name: K8S_JOB_TTL
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_JOB_TTL
+#             - name: K8S_JOB_BACKOFF_LIMIT
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_JOB_BACKOFF_LIMIT
+#             - name: K8S_CPU_REQUEST
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_CPU_REQUEST
+#             - name: K8S_CPU_LIMIT
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_CPU_LIMIT
+#             - name: K8S_MEMORY_REQUEST
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_MEMORY_REQUEST
+#             - name: K8S_MEMORY_LIMIT
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: K8S_MEMORY_LIMIT
+#             - name: API_URL
+#               valueFrom:
+#                 configMapKeyRef:
+#                   name: threadwise-config
+#                   key: API_URL
+            
+#             # Secrets from External Secrets Operator (or regular secrets)
+#             - name: SLACK_BOT_TOKEN
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: threadwise-secrets
+#                   key: slack-bot-token
+#             - name: SLACK_CHANNEL_ID
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: threadwise-secrets
+#                   key: slack-channel-id
+#             - name: LLM_API_KEY
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: threadwise-secrets
+#                   key: llm-api-key
+          
+#           resources:
+#             requests:
+#               memory: "128Mi"
+#               cpu: "100m"
+#             limits:
+#               memory: "256Mi"
+#               cpu: "200m"
+      
+#       # Security context
+#       securityContext:
+#         runAsNonRoot: true
+#         runAsUser: 1001
+#         fsGroup: 1001
+

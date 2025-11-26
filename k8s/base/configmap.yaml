@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: threadwise-config
+  namespace: threadwise
+  labels:
+    app: threadwise
+data:
+  # Server
+  NODE_ENV: "production"
+  PORT: "3000"
+  HOST: "0.0.0.0"
+  
+  # Deployment
+  DEPLOYMENT_MODE: "single"
+  EXECUTION_MODE: "kubernetes"
+  
+  # Cron
+  CRON_SCHEDULE: "*/15 * * * *"
+  RUN_ON_START: "false"
+  
+  # LLM
+  LLM_PROVIDER: "openai"
+  LLM_MODEL: "gpt-4o-mini"
+  LLM_TEMPERATURE: "0.7"
+  LLM_MAX_TOKENS: "2000"
+  
+  # Kubernetes (for job execution)
+  K8S_NAMESPACE: "threadwise"
+  K8S_IMAGE_NAME: "your-registry/threadwise"
+  K8S_IMAGE_TAG: "latest"
+  K8S_JOB_TTL: "3600"
+  K8S_JOB_BACKOFF_LIMIT: "3"
+  K8S_CPU_REQUEST: "100m"
+  K8S_CPU_LIMIT: "500m"
+  K8S_MEMORY_REQUEST: "128Mi"
+  K8S_MEMORY_LIMIT: "512Mi"
+  
+  # API URL (for jobs to call back)
+  API_URL: "http://threadwise-api.threadwise.svc.cluster.local:3000"
+  
+  # JIRA Integration (non-sensitive)
+  JIRA_BASE_URL: ""
+  JIRA_EMAIL: ""
+  JIRA_PROJECT_KEY: ""
+  JIRA_BOARD_ID: ""
+  
+  # Logging
+  LOG_LEVEL: "INFO"
+

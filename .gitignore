@@ -4,3 +4,9 @@ __pycache__/
 .venv/
 node_modules/
 dist/
+
+# Secrets - only allow SOPS-encrypted secrets
+k8s/**/secrets.template.yaml
+# Allow encrypted secrets.yaml (they contain "sops:" metadata)
+# But block any unencrypted ones (safeguard)
+!k8s/**/secrets.yaml

@@ -1,0 +1,78 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: threadwise-dev
+
+resources:
+  - ../../base
+  # SOPS-encrypted secrets (create from template)
+  # - secrets.yaml
+
+# Patch ConfigMap values for dev
+patches:
+  - target:
+      kind: Namespace
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: threadwise-dev
+  
+  - target:
+      kind: ConfigMap
+      name: threadwise-config
+    patch: |-
+      - op: replace
+        path: /data/NODE_ENV
+        value: "development"
+      - op: replace
+        path: /data/DEPLOYMENT_MODE
+        value: "single"
+      - op: replace
+        path: /data/EXECUTION_MODE
+        value: "in-memory"
+      - op: replace
+        path: /data/LOG_LEVEL
+        value: "DEBUG"
+      - op: replace
+        path: /data/RUN_ON_START
+        value: "true"
+      - op: replace
+        path: /data/K8S_NAMESPACE
+        value: "threadwise-dev"
+      - op: replace
+        path: /data/K8S_IMAGE_TAG
+        value: "dev"
+      - op: replace
+        path: /data/API_URL
+        value: "http://threadwise-api.threadwise-dev.svc.cluster.local:3000"
+  
+  - target:
+      kind: Deployment
+      name: threadwise-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "128Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "250m"
+
+# Set image tag for dev
+images:
+  - name: your-registry/threadwise  # ← Must match what's in base
+    newName: devlowkeen/threadwise   # ← Replace with your registry
+    newTag: 0.0.1                    # ← Use this tag
+
+# Common labels for dev
+labels:
+  - pairs:
+      environment: dev

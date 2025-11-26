@@ -1,0 +1,113 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: threadwise-prod
+
+resources:
+  - ../../base
+  # Ingress for external access
+  - ingress.yaml
+
+# Patch ConfigMap values for prod
+patches:
+  - target:
+      kind: Namespace
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: threadwise-prod
+  
+  - target:
+      kind: ConfigMap
+      name: threadwise-config
+    patch: |-
+      - op: replace
+        path: /data/NODE_ENV
+        value: "production"
+      - op: replace
+        path: /data/DEPLOYMENT_MODE
+        value: "single"
+      - op: replace
+        path: /data/EXECUTION_MODE
+        value: "kubernetes"
+      - op: replace
+        path: /data/LOG_LEVEL
+        value: "INFO"
+      - op: replace
+        path: /data/RUN_ON_START
+        value: "false"
+      - op: replace
+        path: /data/K8S_NAMESPACE
+        value: "threadwise-prod"
+      - op: replace
+        path: /data/K8S_IMAGE_TAG
+        value: "latest"
+      - op: replace
+        path: /data/API_URL
+        value: "http://threadwise-api.threadwise-prod.svc.cluster.local:3000"
+      - op: replace
+        path: /data/JIRA_BASE_URL
+        value: "https://hyengineermike.atlassian.net"
+      - op: replace
+        path: /data/JIRA_EMAIL
+        value: "devlowkeen@gmail.com"
+      - op: replace
+        path: /data/JIRA_PROJECT_KEY
+        value: "SCRUM"
+      - op: replace
+        path: /data/JIRA_BOARD_ID
+        value: "1"
+      - op: replace
+        path: /data/LLM_PROVIDER
+        value: "openai"
+      - op: replace
+        path: /data/LLM_MODEL
+        value: "gpt-4o-mini"
+  
+  - target:
+      kind: Deployment
+      name: threadwise-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+  
+  - target:
+      kind: Deployment
+      name: threadwise-cron
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "128Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "200m"
+
+# Set image tag for prod
+images:
+  - name: your-registry/threadwise  # ← Must match what's in base
+    newName: devlowkeen/threadwise   # ← Replace with your registry
+    newTag: 0.0.1                    # ← Use this tag
+
+# Common labels for prod
+labels:
+  - pairs:
+      environment: prod

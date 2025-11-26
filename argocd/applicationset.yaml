@@ -1,0 +1,61 @@
+# NOTE: ArgoCD does not watch this file. It is what triggers argocd to watch the k8s/overlays directories.
+# If you make changes to this, you need to manually apply the manifest
+
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: threadwise
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+        # # this is commented out cause we dont need a dev env jsut yet
+          # - env: dev
+          #   namespace: threadwise-dev
+          #   autoSync: "true"
+          #   branch: main
+          - env: prod
+            namespace: threadwise-prod
+            autoSync: "false"  # Manual sync for production
+            branch: main
+  
+  template:
+    metadata:
+      name: 'threadwise-{{env}}'
+      labels:
+        app: threadwise
+        environment: '{{env}}'
+    
+    spec:
+      project: default
+      
+      source:
+        repoURL: https://github.com/dlowkeen/threadwise.git  # ← Update this
+        targetRevision: '{{branch}}'
+        path: 'k8s/overlays/{{env}}'
+      
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      
+      # Ignore differences in certain fields (optional)
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas  # Ignore if using HPA later
+
