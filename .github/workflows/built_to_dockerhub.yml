@@ -6,7 +6,7 @@ on:
       - 'argocd/**'
     types:
       - closed
-    workflow-dispatch:
+  workflow_dispatch:
     
 permissions:
   contents: write
