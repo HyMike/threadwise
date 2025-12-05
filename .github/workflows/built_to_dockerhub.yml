@@ -13,7 +13,7 @@ permissions:
       
 jobs:
   if_merged:
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow-dispatch'
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     name: Build and Push Docker Image   
     runs-on: ubuntu-latest 
 
