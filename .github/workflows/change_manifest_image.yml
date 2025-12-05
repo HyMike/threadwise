@@ -1,0 +1,40 @@
+name: change_manifest_image
+on: 
+  repository_dispatch:
+    types: [built_image]
+
+
+jobs:
+  update:
+    name: Update Manifest with New Image
+    runs-on: ubuntu-latest
+  
+    steps: 
+      - name: Checkout the source code
+        uses: actions/checkout@v5
+        with: 
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true 
+           
+
+      - name: Extract image SHA
+        run: |
+          echo "IMAGE_SHA=${{ github.event.client_payload.image_sha }}" >> $GITHUB_ENV
+
+      - name: Update Kustomization
+        run: |
+            echo "Updating Image tag to: $IMAGE_SHA"
+            sed -i "s#newTag: .*#newTag: $IMAGE_SHA#" k8s/overlays/prod/kustomization.yaml
+        
+      - name: Verify Change
+        run: |
+          echo "Updating deployment yaml"
+          grep "newTag: " k8s/overlays/prod/kustomization.yaml
+
+      - name: Push changes to repository
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add k8s/overlays/prod/kustomization.yaml
+          git commit -m "Updating k8s manifest image"
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
