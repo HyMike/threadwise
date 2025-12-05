@@ -59,7 +59,7 @@ jobs:
       - name: Setup Repository Dispatch
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.THREADWISE_GITHUB_TOKEN }}
           event-type: built_image
           client-payload: |
             {
