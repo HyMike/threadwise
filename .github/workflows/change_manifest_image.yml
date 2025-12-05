@@ -3,7 +3,7 @@ on:
   repository_dispatch:
     types: [built_image]
 
-permission:
+permissions:
   contents: write
   
 jobs:
