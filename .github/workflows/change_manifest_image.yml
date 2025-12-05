@@ -3,7 +3,9 @@ on:
   repository_dispatch:
     types: [built_image]
 
-
+permission:
+  contents: write
+  
 jobs:
   update:
     name: Update Manifest with New Image
