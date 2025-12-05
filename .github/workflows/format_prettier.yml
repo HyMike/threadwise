@@ -1,7 +1,6 @@
 name: Prettier Format
 on:
   push:
-   
 
 permissions:
   contents: write
